@@ -6,8 +6,9 @@ const bcrypt = require('bcrypt');
 const app = express();
 
 app.use(express.json());
+
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // Middleware to verify JWT
@@ -22,18 +23,29 @@ function verifyToken(req, res, next) {
     });
 }
 
-// Login Endpoint
-app.post('/login', async (req, res) => {
+// User login (Generate JWT)
+app.post("/login", (req, res) => {
     const { username, password } = req.body;
-    const user = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    
-    if (user.rows.length === 0 || !(await bcrypt.compare(password, user.rows[0].password))) {
-        return res.status(401).json({ message: 'Invalid Credentials' });
+    if (username === "admin" && password === "password") {
+        const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        return res.json({ token });
     }
-    
-    const token = jwt.sign({ id: user.rows[0].id, username }, JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
+    res.status(401).json({ error: "Invalid credentials" });
 });
+
+
+// // Login Endpoint
+// app.post('/login', async (req, res) => {
+//     const { username, password } = req.body;
+//     const user = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    
+//     if (user.rows.length === 0 || !(await bcrypt.compare(password, user.rows[0].password))) {
+//         return res.status(401).json({ message: 'Invalid Credentials' });
+//     }
+    
+//     const token = jwt.sign({ id: user.rows[0].id, username }, JWT_SECRET, { expiresIn: '1h' });
+//     res.json({ token });
+// });
 
 // Add a Book
 app.post('/books', verifyToken, async (req, res) => {
